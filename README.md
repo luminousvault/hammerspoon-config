@@ -13,7 +13,7 @@ Personal configuration for [Hammerspoon](https://www.hammerspoon.org/), the macO
 | Module | Description |
 |--------|-------------|
 | [`modules/input_source.lua`](modules/input_source.lua) | **Toggle Korean/English input with a solo tap of the right Command key.** Combined with other keys it still works as a normal Command key. Shows a `[한] 두벌식` / `[A] ABC` alert at the bottom of the focused screen on switch (modes: all / manual / off) |
-| [`modules/audio_by_location.lua`](modules/audio_by_location.lua) | **Auto-switch audio output state based on Wi-Fi SSID.** Define any number of places in `local_config.lua`, each with its own policy: fixed state or learn-and-restore (`learn`), speaker-only enforcement that leaves Bluetooth earbuds and other personal devices alone (`speakerOnly`), and re-apply on wake (`enforceOnWake`) |
+| [`modules/audio_by_location.lua`](modules/audio_by_location.lua) | **Auto-switch audio output state based on Wi-Fi SSID.** Define any number of places in `local_config.lua`, each with its own policy: fixed state or remember-and-restore (`remember`), speaker-only enforcement that leaves Bluetooth earbuds and other personal devices alone (`speakerOnly`), and re-apply on wake (`enforceOnWake`) |
 | [`modules/alert.lua`](modules/alert.lua) | **Shared alert UI** replacing `hs.alert`. Configurable position (TOP / CENTER / BOTTOM) and duration (SHORT / NORMAL / LONG), with optional badge (a character or an icon) |
 
 ## Installation
@@ -46,8 +46,8 @@ inputSource.previewAlert()       -- preview the alert design
 
 audioLoc.status()                -- show SSID, place, output device, mute state
 audioLoc.reapply()               -- re-apply the current place policy now
-audioLoc.pin()                   -- save the current state for this place (learning places only)
-audioLoc.reset()                 -- clear learned states
+audioLoc.pin()                   -- save the current state for this place (remembering places only)
+audioLoc.reset()                 -- clear remembered states
 
 customAlert.show("message")      -- call the shared alert directly
 ```
