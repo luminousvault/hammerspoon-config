@@ -1,5 +1,9 @@
 # Hammerspoon Config
 
+[![License](https://img.shields.io/github/license/luminousvault/hammerspoon-config)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)](https://www.hammerspoon.org/)
+[![Lua](https://img.shields.io/badge/Lua-5.4-2C2D72?logo=lua&logoColor=white)](https://www.lua.org/)
+
 **English** | [한국어](README.ko.md)
 
 Personal configuration for [Hammerspoon](https://www.hammerspoon.org/), the macOS automation tool.
