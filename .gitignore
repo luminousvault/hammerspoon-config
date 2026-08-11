@@ -1,0 +1,8 @@
+# 머신 전용 설정 (SSID 등 개인정보 포함)
+local_config.lua
+
+# macOS
+.DS_Store
+
+# Hammerspoon 이 관리하는 외부 패키지
+Spoons/
