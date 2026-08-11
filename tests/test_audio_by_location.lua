@@ -51,7 +51,7 @@ return {
       local place = AL.currentPlace()
       if not place then t.skip("not at a registered place") end
       local def = AL.placeDef(place)
-      if def.learn or not def.audio or def.audio.muted == nil then
+      if def.remember or not def.audio or def.audio.muted == nil then
         t.skip("place has no fixed muted policy")
       end
 
@@ -68,12 +68,12 @@ return {
     end,
   },
   {
-    name = "학습 안 하는 장소에서 pin() 거부",
+    name = "기억 안 하는 장소에서 pin() 거부",
     fn = function(t)
       local place = AL.currentPlace()
       if not place then t.skip("not at a registered place") end
       local def = AL.placeDef(place)
-      if def.learn then t.skip("place is a learning place") end
+      if def.remember then t.skip("place is a remembering place") end
 
       local dev = hs.audiodevice.defaultOutputDevice()
       local settingsKey = "audio.state." .. place .. "." .. (dev:uid() or "unknown")

@@ -13,7 +13,7 @@ macOS 자동화 도구 [Hammerspoon](https://www.hammerspoon.org/) 개인 설정
 | 모듈 | 설명 |
 |------|------|
 | [`modules/input_source.lua`](modules/input_source.lua) | **오른쪽 커맨드 키 단독 탭으로 한/영 전환.** 다른 키와 조합하면 일반 커맨드 키로 동작. 전환 시 포커스된 화면 하단에 `[한] 두벌식` / `[A] ABC` 알림 표시 (모드: all / manual / off) |
-| [`modules/audio_by_location.lua`](modules/audio_by_location.lua) | **Wi-Fi SSID 기준 오디오 자동 전환.** `local_config.lua` 에 장소를 자유롭게 정의하고 장소별 정책 지정: 고정값 또는 학습·복원(`learn`), 블루투스 이어폰 등 개인 기기를 건드리지 않는 스피커 한정 적용(`speakerOnly`), 절전 복귀 시 재적용(`enforceOnWake`) |
+| [`modules/audio_by_location.lua`](modules/audio_by_location.lua) | **Wi-Fi SSID 기준 오디오 자동 전환.** `local_config.lua` 에 장소를 자유롭게 정의하고 장소별 정책 지정: 고정값 또는 기억·복원(`remember`), 블루투스 이어폰 등 개인 기기를 건드리지 않는 스피커 한정 적용(`speakerOnly`), 절전 복귀 시 재적용(`enforceOnWake`) |
 | [`modules/alert.lua`](modules/alert.lua) | **공통 알림 UI.** `hs.alert` 대체. 위치(TOP/CENTER/BOTTOM)·시간(SHORT/NORMAL/LONG) 지정, 배지(글자 또는 아이콘) 지원 |
 
 ## 설치
@@ -46,8 +46,8 @@ inputSource.previewAlert()       -- 알림 디자인 미리보기
 
 audioLoc.status()                -- SSID·장소·출력기기·음소거 상태 확인
 audioLoc.reapply()               -- 현재 장소 정책 즉시 재적용
-audioLoc.pin()                   -- 지금 상태를 현재 장소 값으로 저장 (학습 장소만)
-audioLoc.reset()                 -- 학습값 초기화
+audioLoc.pin()                   -- 지금 상태를 현재 장소 값으로 저장 (기억 장소만)
+audioLoc.reset()                 -- 기억값 초기화
 
 customAlert.show("메시지")       -- 공통 알림 직접 호출
 ```

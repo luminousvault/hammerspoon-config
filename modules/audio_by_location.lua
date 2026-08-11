@@ -8,7 +8,8 @@
 --   ssids         : 이 장소로 인식할 SSID 목록
 --   name          : 알림에 표시할 이름 (생략 시 장소 id)
 --   audio         : 기본 오디오 상태 { muted, volume }
---   learn         : true 면 떠날 때 상태를 기억해두고 돌아오면 복원
+--   remember      : true 면 떠날 때 상태를 기억해두고 돌아오면 복원.
+--                   이때 audio 는 저장값이 아직 없을 때만 쓰는 초기 기본값
 --                   (false 면 항상 audio 고정값 적용 — 예: 회사는 음소거 고정)
 --   speakerOnly   : true 면 정책을 스피커류(내장/HDMI/DisplayPort)에만 적용.
 --                   블루투스 이어폰 등 개인 기기는 건드리지 않음
@@ -55,7 +56,7 @@ end
 local STRINGS = {
   muted      = "음소거",
   volume     = "볼륨 %d%%",
-  resetDone  = "오디오 학습값 초기화",
+  resetDone  = "오디오 기억값 초기화",
 }
 
 -- 알림 배지용 스피커 아이콘 (메뉴 막대와 같은 시스템 템플릿 이미지)
@@ -109,7 +110,7 @@ end
 -- 지금 오디오 상태를 해당 장소의 값으로 저장
 function M.save(place, dev)
   local def = place and PLACES[place]
-  if not (def and def.learn) then return end   -- 고정값 장소는 저장하지 않음
+  if not (def and def.remember) then return end   -- 고정값 장소는 저장하지 않음
 
   dev = dev or device()
   if not dev then return end
@@ -138,7 +139,7 @@ function M.restore(place, dev)
     return
   end
 
-  local state = def.learn and hs.settings.get(key(place, dev)) or nil
+  local state = def.remember and hs.settings.get(key(place, dev)) or nil
   state = state or def.audio
   if not state then return end
 
@@ -187,9 +188,17 @@ local function apply(force)
 end
 
 -- Wi-Fi 워처는 연결 한 번에 여러 번 발동하므로 디바운스가 필요합니다.
+-- force 는 대기 중 한 번이라도 요청되면 발화 시까지 유지됩니다.
+-- (절전 복귀 시 기기 재인식(force)과 Wi-Fi 재연결이 겹쳐도 유실되지 않게)
+local pendingForce = false
 local function schedule(force)
+  pendingForce = pendingForce or force
   if debounce then debounce:stop() end
-  debounce = hs.timer.doAfter(SETTLE, function() apply(force) end)
+  debounce = hs.timer.doAfter(SETTLE, function()
+    local f = pendingForce
+    pendingForce = false
+    apply(f)
+  end)
 end
 
 --------------------------------------------------------------------------------
@@ -205,7 +214,7 @@ M.sleep = hs.caffeinate.watcher.new(function(event)
 
   -- Wi-Fi 가 다시 붙은 뒤, 강제 적용 대상이면 한 번 더
   -- 주의: doAfter 타이머도 참조를 유지해야 합니다. 참조 없이 만들면
-  --       발화 전에 GC 가 수거해서 조용히 사라질 수 있습니다. (아래 동일)
+  --       발화 전에 GC 가 수거해서 조용히 사라질 수 있습니다.
   M.wakeTimer = hs.timer.doAfter(WAKE_SETTLE, function()
     local place = currentPlace()
     local def = place and PLACES[place]
@@ -217,10 +226,7 @@ end):start()
 -- 주의: hs.audiodevice.watcher 콜백은 Hammerspoon 전체에 하나만 등록됩니다.
 --       다른 모듈에서 setCallback 을 부르면 서로 덮어씁니다.
 hs.audiodevice.watcher.setCallback(function(event)
-  if event ~= "dOut" then return end
-  local place = currentPlace()
-  if not place then return end
-  M.devTimer = hs.timer.doAfter(1, function() M.restore(place) end)
+  if event == "dOut" then schedule(true) end
 end)
 hs.audiodevice.watcher.start()
 
@@ -239,12 +245,12 @@ function M.reapply()
   M.restore(place)
 end
 
--- 지금 상태를 현재 장소의 값으로 저장. 학습 대상 장소에서만 동작.
+-- 지금 상태를 현재 장소의 값으로 저장. 기억(remember) 대상 장소에서만 동작.
 function M.pin()
   local place = currentPlace()
   local def = place and PLACES[place]
-  if not (def and def.learn) then
-    log.w("not a learning place: " .. tostring(place))
+  if not (def and def.remember) then
+    log.w("not a remembering place: " .. tostring(place))
     return
   end
   M.save(place)
@@ -271,7 +277,7 @@ function M.status()
     dev and tostring(dev:volume()) or "nil")
 end
 
--- 학습값 초기화. 저장 키가 장소+기기 UID 단위이므로 모든 출력 기기를 순회합니다.
+-- 기억값 초기화. 저장 키가 장소+기기 UID 단위이므로 모든 출력 기기를 순회합니다.
 function M.reset()
   for placeId in pairs(PLACES) do
     for _, dev in ipairs(hs.audiodevice.allOutputDevices()) do

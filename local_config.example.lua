@@ -16,7 +16,8 @@ return {
   --   ssids         : 이 장소로 인식할 SSID 목록
   --   name          : 알림에 표시할 이름 (생략 시 장소 id)
   --   audio         : 기본 오디오 상태 { muted, volume }
-  --   learn         : true 면 떠날 때 상태를 기억해두고 돌아오면 복원
+  --   remember      : true 면 떠날 때 상태를 기억해두고 돌아오면 복원
+  --                   (이때 audio 는 저장값이 아직 없을 때만 쓰는 초기 기본값)
   --   speakerOnly   : true 면 스피커류에만 적용 (이어폰 등 개인 기기 제외)
   --   enforceOnWake : true 면 절전 복귀 시 강제 재적용
   places = {
@@ -24,7 +25,7 @@ return {
       ssids = { "MyOfficeWifi" },
       name  = "회사",
       audio = { muted = true },
-      learn = false,
+      remember = false,
       speakerOnly   = true,
       enforceOnWake = true,
     },
@@ -32,7 +33,7 @@ return {
       ssids = { "MyHomeWifi", "MyHomeWifi_5G" },
       name  = "집",
       audio = { muted = false, volume = 50 },
-      learn = true,
+      remember = true,
     },
     -- 필요한 만큼 추가:
     -- cafe = {
