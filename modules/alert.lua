@@ -10,9 +10,10 @@
 --
 --   Alert.show("메시지")                                   -- 중앙, 2초 (hs.alert 와 동일)
 --   Alert.show("두벌식", {
---     badge    = "한",                                     -- 앞에 붙는 강조 배지 (생략 가능)
---     position = Alert.Position.BOTTOM,                    -- TOP / CENTER / BOTTOM
---     duration = Alert.Duration.SHORT,                     -- SHORT / NORMAL / LONG
+--     badge      = "한",                                   -- 앞에 붙는 강조 배지 (생략 가능)
+--     badgeColor = { red = 1, green = 0.42, blue = 0 },    -- 배지 배경색 (생략 시 짙은 회색)
+--     position   = Alert.Position.BOTTOM,                  -- TOP / CENTER / BOTTOM
+--     duration   = Alert.Duration.SHORT,                   -- SHORT / NORMAL / LONG
 --   })
 --
 --   badge 는 문자열(한 글자) 또는 hs.image 를 받습니다. 시스템 템플릿 아이콘을
@@ -77,12 +78,13 @@ local function closeAlert()
   if M.canvas      then M.canvas:delete()    M.canvas      = nil end
 end
 
--- opts: { badge?, position?, duration? }
+-- opts: { badge?, badgeColor?, position?, duration? }
 function M.show(text, opts)
   opts = opts or {}
-  local badge    = opts.badge
-  local position = opts.position or M.Position.CENTER
-  local duration = opts.duration or M.Duration.NORMAL
+  local badge      = opts.badge
+  local badgeColor = opts.badgeColor or BADGE_COLOR
+  local position   = opts.position or M.Position.CENTER
+  local duration   = opts.duration or M.Duration.NORMAL
 
   closeAlert()
 
@@ -124,7 +126,7 @@ function M.show(text, opts)
       type = "rectangle",
       action = "fill",
       roundedRectRadii = { xRadius = BADGE_RADIUS, yRadius = BADGE_RADIUS },
-      fillColor = BADGE_COLOR,
+      fillColor = badgeColor,
       frame = { x = contentX, y = badgeY, w = BADGE_SIZE, h = BADGE_SIZE },
     }
     if type(badge) == "string" then

@@ -10,3 +10,4 @@ require("hs.ipc")  -- 터미널 hs CLI 연동
 
 require("modules.input_source")
 require("modules.audio_by_location")
+require("modules.caps_lock")
