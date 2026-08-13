@@ -14,6 +14,9 @@
 --     badgeColor = { red = 1, green = 0.42, blue = 0 },    -- 배지 배경색 (생략 시 짙은 회색)
 --     position   = Alert.Position.BOTTOM,                  -- TOP / CENTER / BOTTOM
 --     duration   = Alert.Duration.SHORT,                   -- SHORT / NORMAL / LONG
+--     minWidth   = 120,                                    -- 박스 최소 너비 px (생략 시 72).
+--                                                          -- 번갈아 뜨는 알림의 박스 크기를
+--                                                          -- 맞출 때 사용 (예: caps ABC/abc)
 --   })
 --
 --   badge 는 문자열(한 글자) 또는 hs.image 를 받습니다. 시스템 템플릿 아이콘을
@@ -78,13 +81,14 @@ local function closeAlert()
   if M.canvas      then M.canvas:delete()    M.canvas      = nil end
 end
 
--- opts: { badge?, badgeColor?, position?, duration? }
+-- opts: { badge?, badgeColor?, position?, duration?, minWidth? }
 function M.show(text, opts)
   opts = opts or {}
   local badge      = opts.badge
   local badgeColor = opts.badgeColor or BADGE_COLOR
   local position   = opts.position or M.Position.CENTER
   local duration   = opts.duration or M.Duration.NORMAL
+  local minWidth   = opts.minWidth or BOX_MIN_W
 
   closeAlert()
 
@@ -108,7 +112,7 @@ function M.show(text, opts)
 
   -- 배지 유무에 따라 가로 배치 계산
   local badgeSpan = badge and (BADGE_SIZE + BADGE_GAP) or 0
-  local boxW = math.max(BOX_MIN_W, BOX_PADDING_H + badgeSpan + textW + BOX_PADDING_H)
+  local boxW = math.max(minWidth, BOX_PADDING_H + badgeSpan + textW + BOX_PADDING_H)
 
   -- 최소 너비(BOX_MIN_W)가 적용돼 박스가 내용보다 넓어지면 내용을 가운데로
   local contentX = (boxW - badgeSpan - textW) / 2

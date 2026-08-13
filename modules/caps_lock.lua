@@ -34,6 +34,10 @@ local STRINGS = {
 -- 켜짐 배지 색 (macOS 시스템 주황 계열). 꺼짐은 기본 회색.
 local ON_BADGE_COLOR = { red = 1.0, green = 0.42, blue = 0.0, alpha = 0.95 }
 
+-- 켜짐/꺼짐 알림의 박스 너비 통일용. "abc" 가 "ABC" 보다 좁아서
+-- 토글 때마다 박스 크기가 달라지는 것을 막습니다. ([⇪] ABC 실측 118px)
+local MIN_WIDTH = 120
+
 -- rawFlags 의 caps lock 잠금 비트. getFlags() 에는 capslock 이 없어서
 -- (cmd/alt/shift/ctrl/fn 만 제공) raw 플래그 마스크를 씁니다.
 local ALPHASHIFT = hs.eventtap.event.rawFlagMasks.alphaShift
@@ -47,6 +51,7 @@ local function showAlert(on)
     badgeColor = on and ON_BADGE_COLOR or nil,
     position   = Alert.Position.BOTTOM,
     duration   = on and Alert.Duration.NORMAL or Alert.Duration.SHORT,
+    minWidth   = MIN_WIDTH,
   })
 end
 
