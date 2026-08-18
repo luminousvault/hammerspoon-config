@@ -14,6 +14,8 @@ return {
   -- 장소 정의 (audio_by_location 에서 사용)
   -- 장소 id(키)와 개수는 자유롭게 정하세요. 각 장소에 지정 가능한 정책:
   --   ssids         : 이 장소로 인식할 SSID 목록
+  --   fallback      : true 면 등록되지 않은 SSID 에 연결됐을 때 이 장소로
+  --                   간주 (하나만 정의. 유선/미연결은 여전히 장소 없음)
   --   name          : 알림에 표시할 이름 (생략 시 장소 id)
   --   audio         : 기본 오디오 상태 { muted, volume }
   --   remember      : true 면 떠날 때 상태를 기억해두고 돌아오면 복원
@@ -41,6 +43,14 @@ return {
     --   name  = "카페",
     --   audio = { muted = true },
     --   speakerOnly = true,
+    -- },
+    -- 등록되지 않은 SSID 대비 (공공장소 등에서 소리가 나지 않게):
+    -- outside = {
+    --   fallback = true,
+    --   name  = "외부",
+    --   audio = { muted = true },
+    --   speakerOnly   = true,
+    --   enforceOnWake = true,
     -- },
   },
 }

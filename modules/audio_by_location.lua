@@ -6,6 +6,8 @@
 -- 장소는 local_config.lua 에서 자유롭게 정의합니다 (이름·개수 제한 없음).
 -- 장소마다 아래 정책을 지정할 수 있습니다:
 --   ssids         : 이 장소로 인식할 SSID 목록
+--   fallback      : true 면 어느 장소에도 등록되지 않은 SSID 에 연결됐을 때
+--                   이 장소로 간주 (하나만 정의. 유선/미연결은 여전히 장소 없음)
 --   name          : 알림에 표시할 이름 (생략 시 장소 id)
 --   audio         : 기본 오디오 상태 { muted, volume }
 --   remember      : true 면 떠날 때 상태를 기억해두고 돌아오면 복원.
@@ -46,10 +48,13 @@ local PLACES = localConfig.places or {}
 
 -- SSID → 장소 id 역인덱스
 local SSID_TO_PLACE = {}
+-- 등록되지 않은 SSID 에 연결됐을 때 적용할 장소 (fallback = true, 하나만)
+local FALLBACK_PLACE
 for id, def in pairs(PLACES) do
   for _, ssid in ipairs(def.ssids or {}) do
     SSID_TO_PLACE[ssid] = id
   end
+  if def.fallback then FALLBACK_PLACE = id end
 end
 
 -- 알림에 표시할 문자열. 사용자 언어에 맞게 수정하세요. (로그는 항상 영어)
@@ -97,10 +102,14 @@ local function key(place, dev)
   return "audio.state." .. place .. "." .. uid
 end
 
-local function currentPlace()
-  local ssid = hs.wifi.currentNetwork()
+-- ssid → 장소 id. 등록되지 않은 SSID 는 fallback 장소 (없으면 nil)
+local function placeFor(ssid)
   if not ssid then return nil end        -- 유선 랜 / 권한 없음 / 미연결
-  return SSID_TO_PLACE[ssid]
+  return SSID_TO_PLACE[ssid] or FALLBACK_PLACE
+end
+
+local function currentPlace()
+  return placeFor(hs.wifi.currentNetwork())
 end
 
 --------------------------------------------------------------------------------
@@ -259,6 +268,11 @@ end
 -- 현재 인식된 장소 id (콘솔/테스트용)
 function M.currentPlace()
   return currentPlace()
+end
+
+-- SSID → 장소 id 해석 (콘솔/테스트용). 미등록 SSID 는 fallback 장소.
+function M.placeFor(ssid)
+  return placeFor(ssid)
 end
 
 -- 장소 정의 조회 (콘솔/테스트용)

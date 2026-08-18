@@ -27,6 +27,15 @@ return {
     end,
   },
   {
+    name = "미등록 SSID 는 fallback 장소로 인식",
+    fn = function(t)
+      local id = AL.placeFor("__not_a_registered_ssid__")
+      if not id then t.skip("no fallback place defined") end
+      t.truthy(AL.placeDef(id).fallback, "resolved place is the fallback place")
+      t.eq(AL.placeFor(nil), nil, "no SSID still resolves to no place")
+    end,
+  },
+  {
     name = "speakerOnly 장소에서 개인 기기는 건드리지 않음",
     fn = function(t)
       local place = AL.currentPlace()
