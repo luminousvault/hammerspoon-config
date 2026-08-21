@@ -14,6 +14,9 @@ local function reconnectDevice()
   end
 end
 
+-- inUse 영속화에 쓰는 hs.settings 키 (modules/bluetooth_device.lua 와 동일해야 함)
+local SETTINGS_KEY = "bluetooth_device.inUse"
+
 -- 상태 머신을 가짜 환경에서 돌리고 끝나면 원상복구하는 래퍼
 local function withFakes(fn)
   local id = reconnectDevice()
@@ -22,6 +25,7 @@ local function withFakes(fn)
     connect        = BT.connect,
     present        = BT.present,
     inUse          = BT.state[id].inUse,
+    settings       = hs.settings.get(SETTINGS_KEY),
   }
   if BT.poll then BT.poll:stop() end   -- 진짜 틱이 끼어들지 않게
 
@@ -31,6 +35,7 @@ local function withFakes(fn)
   BT.connect          = saved.connect
   BT.present          = saved.present
   BT.state[id].inUse  = saved.inUse
+  hs.settings.set(SETTINGS_KEY, saved.settings or {})
   if BT.poll then BT.poll:start() end
 
   if not ok then error(err, 0) end
@@ -96,6 +101,52 @@ return {
         BT.tick(0)                       -- 복귀
         t.eq(BT.present, true, "present after return")
         t.eq(calls, 0, "no reconnect when device was not in use")
+      end)
+    end,
+  },
+  {
+    name = "자리에서 미리 끊어둔 기기(충전 등)는 복귀해도 시도하지 않음",
+    fn = function(t)
+      if not reconnectDevice() then t.skip("no reconnectOnReturn device configured") end
+      withFakes(function(id)
+        -- 사용 중이다가 자리에서 끊음 (충전 케이스에 넣는 등)
+        BT.present = true
+        BT.state[id].inUse = false
+        BT.audioConnected = function() return true end
+        BT.tick(0)
+        BT.audioConnected = function() return false end
+        BT.tick(0)
+        t.eq(BT.state[id].inUse, false, "disconnect while present clears in-use")
+
+        BT.tick(9999)                    -- 부재 전환
+
+        local calls = 0
+        BT.connect = function() calls = calls + 1 end
+        BT.tick(0)                       -- 복귀
+        t.eq(calls, 0, "no reconnect when disconnected before leaving")
+      end)
+    end,
+  },
+  {
+    name = "사용 기록이 hs.settings 에 보존됨 (리로드 대비)",
+    fn = function(t)
+      if not reconnectDevice() then t.skip("no reconnectOnReturn device configured") end
+      withFakes(function(id)
+        -- 자리에서 사용 기록 → settings 에 저장됨 (리로드 시 여기서 복원)
+        BT.present = true
+        BT.state[id].inUse = false
+        BT.audioConnected = function() return true end
+        BT.tick(0)
+        t.eq((hs.settings.get(SETTINGS_KEY) or {})[id], true,
+          "in-use persisted to settings")
+
+        -- 복귀로 세션이 리셋되면 settings 에서도 지워짐
+        BT.tick(9999)                    -- 부재 전환
+        BT.connect = function() end
+        BT.audioConnected = function() return false end
+        BT.tick(0)                       -- 복귀 (inUse 리셋)
+        t.eq((hs.settings.get(SETTINGS_KEY) or {})[id], nil,
+          "in-use cleared from settings after reset")
       end)
     end,
   },
