@@ -7,7 +7,8 @@
 --
 -- 최상위 키는 기능(모듈)별 네임스페이스입니다. 사용하지 않는 기능의 키는
 -- 지우거나 비워 둬도 됩니다 — 해당 모듈만 비활성 상태로 동작합니다.
---   places : modules/audio_by_location.lua 에서 사용
+--   places    : modules/audio_by_location.lua 에서 사용
+--   bluetooth : modules/bluetooth_device.lua 에서 사용
 --------------------------------------------------------------------------------
 
 return {
@@ -52,5 +53,24 @@ return {
     --   speakerOnly   = true,
     --   enforceOnWake = true,
     -- },
+  },
+
+  -- 블루투스 기기 정의 (bluetooth_device 에서 사용. blueutil 설치 필요)
+  -- 기기 id(키)와 개수는 자유. 기기별 설정:
+  --   name              : 시스템에 표시되는 기기 이름 (연결 감지에 사용.
+  --                       시스템 설정 → 블루투스 에 보이는 이름 그대로)
+  --   mac               : 기기 MAC 주소 (`blueutil --paired` 로 확인)
+  --   hotkey            : 연결/해제 토글 단축키 { mods, key } (생략 가능)
+  --   reconnectOnReturn : true 면 자리를 비웠다 돌아왔을 때, 비우기 전에
+  --                       쓰고 있던 기기가 끊겨 있으면 자동 재연결
+  bluetooth = {
+    devices = {
+      -- earbuds = {
+      --   name   = "AirPods Pro",
+      --   mac    = "00:00:00:00:00:00",
+      --   hotkey = { { "cmd", "alt", "ctrl" }, "B" },
+      --   reconnectOnReturn = true,
+      -- },
+    },
   },
 }
