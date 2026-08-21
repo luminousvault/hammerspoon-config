@@ -4,7 +4,8 @@
 -- CAPS LOCK 잠금 상태가 바뀌면 알림을 표시합니다.
 --   켜짐: [⇪] 주황 배지 + "ABC" (2초 — 모르고 지나치면 안 되는 상태)
 --   꺼짐: [⇪] 회색 배지 + "abc" (0.6초)
--- 입력 소스와 무관하게 항상 표시합니다.
+-- 영어 입력 소스일 때만 표시합니다 (한글 입력은 대소문자와 무관).
+-- 잠금 상태 추적은 입력 소스와 무관하게 항상 동작합니다.
 --
 -- 켜고 끄기는 input_source 의 알림 모드를 따릅니다:
 --   inputSource.setAlertMode("off") → caps lock 알림도 꺼짐
@@ -60,7 +61,8 @@ function M.handle(event)
   local on = (event:rawFlags() & ALPHASHIFT) ~= 0
   if on ~= M.state then
     M.state = on
-    if InputSource.alertMode ~= InputSource.AlertMode.OFF then
+    if InputSource.alertMode ~= InputSource.AlertMode.OFF
+        and hs.keycodes.currentSourceID() == InputSource.ENGLISH then
       showAlert(on)
     end
   end
