@@ -40,6 +40,39 @@ return {
     end,
   },
   {
+    name = "영어 입력 소스에서만 알림 표시 (한글 모드 억제)",
+    fn = function(t)
+      local IS = require("modules.input_source")
+      local Alert = require("modules.alert")
+      local savedState  = CL.state
+      local savedSource = hs.keycodes.currentSourceID()
+
+      -- 한글 모드: 토글해도 알림이 뜨지 않아야 함
+      IS.toKorean()
+      t.waitUntil(function()
+        return hs.keycodes.currentSourceID() ~= IS.ENGLISH
+      end, 2, "switched to korean")
+      t.sleep(1)                           -- 전환 알림 소멸 대기
+      CL.state = false
+      CL.handle(fakeEvent(true))
+      t.eq(CL.state, true, "state still tracked in korean mode")
+      t.eq(Alert.canvas, nil, "no alert in korean mode")
+
+      -- 영어 모드: 토글하면 알림이 떠야 함
+      IS.toEnglish()
+      t.waitUntil(function()
+        return hs.keycodes.currentSourceID() == IS.ENGLISH
+      end, 2, "switched to english")
+      t.sleep(1)                           -- 전환 알림 소멸 대기
+      CL.handle(fakeEvent(false))
+      t.truthy(Alert.canvas, "alert shown in english mode")
+      t.sleep(1)                           -- caps 알림 소멸 대기
+
+      hs.keycodes.currentSourceID(savedSource)
+      CL.state = savedState
+    end,
+  },
+  {
     name = "inputSource 알림 모드 off 면 알림 없이 상태만 갱신",
     fn = function(t)
       local IS = require("modules.input_source")
