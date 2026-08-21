@@ -5,10 +5,11 @@
 --
 -- 기능
 --   1) 단축키 토글 : 기기별 hotkey 로 연결/해제
---   2) 자동 재연결 : 자리를 비웠다 돌아왔을 때, 비우기 전에 쓰고 있던 기기가
---      끊겨 있으면 한 번만 재연결 시도. 실패(미착용/전원 꺼짐)는 조용히 무시,
---      성공 시에만 알림. 자리에 계속 있는 동안은 끊겨 있어도 건드리지 않음
---      (다른 기기로 쓰려고 일부러 끊은 상태일 수 있으므로).
+--   2) 자동 재연결 : 자리를 비웠다 돌아왔을 때, 떠나는 시점에 연결돼 있던
+--      기기가 끊겨 있으면 한 번만 재연결 시도(착용한 채 나가서 거리로 끊긴
+--      경우). 실패(미착용/전원 꺼짐)는 조용히 무시, 성공 시에만 알림.
+--      떠나기 전에 이미 끊어둔 기기(충전, 다른 기기 사용 등)와 자리에 계속
+--      있는 동안 끊긴 기기는 건드리지 않음.
 --
 -- 동작 원리
 --   - 10초 타이머가 입력 유휴 시간(hs.host.idleTime)과 기기 연결 여부(오디오
@@ -84,6 +85,32 @@ local function isConnected(def)
 end
 
 --------------------------------------------------------------------------------
+-- 사용 기록 (state.inUse) — 설정 리로드를 넘어 보존
+--
+-- "자리에 있을 때 마지막으로 관찰된 연결 상태"를 메모리에만 두면, 부재 중에
+-- 설정이 리로드되는 순간(설정 수정, 개발 작업 등) 기록이 사라져 복귀 재연결이
+-- 무시됩니다. 그래서 변경될 때마다 hs.settings 에 저장하고 로드 시 복원합니다.
+--------------------------------------------------------------------------------
+
+local SETTINGS_KEY = "bluetooth_device.inUse"
+
+M.state = {}   -- 기기 id → { inUse = 자리에 있을 때 마지막으로 관찰된 연결 상태 }
+local savedInUse = hs.settings.get(SETTINGS_KEY) or {}
+for id in pairs(M.devices) do
+  M.state[id] = { inUse = savedInUse[id] == true }
+end
+
+local function setInUse(id, v)
+  if not M.state[id] or M.state[id].inUse == v then return end
+  M.state[id].inUse = v
+  local toSave = {}
+  for did, s in pairs(M.state) do
+    if s.inUse then toSave[did] = true end
+  end
+  hs.settings.set(SETTINGS_KEY, toSave)
+end
+
+--------------------------------------------------------------------------------
 -- 연결 / 해제 (blueutil 은 몇 초 걸릴 수 있어 hs.task 로 비동기 실행)
 --
 -- 알림 시점: blueutil 종료 시점은 실제 상태 전환과 어긋납니다 (해제는 실제보다
@@ -142,7 +169,7 @@ function M.connect(id, opts)
   -- 오디오 장치가 실제로 등장한 순간 = 연결 완료
   watchTransition(id, def, true, function()
     log.f("connect %s ok", id)
-    if M.state[id] then M.state[id].inUse = true end
+    setInUse(id, true)
     Alert.show(STRINGS.connected:format(def.name))
   end, function()
     fail("timeout")
@@ -195,11 +222,9 @@ end
 -- 자리 복귀 감지 (부재 → 복귀 전환 시에만 재연결 시도)
 --------------------------------------------------------------------------------
 
-M.present = true
-M.state = {}   -- 기기 id → { inUse = 자리에 있는 동안 연결된 적 있는지 }
-for id in pairs(M.devices) do
-  M.state[id] = { inUse = false }
-end
+-- 부재 중에 리로드됐을 수 있으므로 현재 유휴 시간으로 초기화
+-- (true 고정이면 리로드 직후 복귀 시 "부재→복귀" 전환을 놓칠 수 있음)
+M.present = hs.host.idleTime() < AWAY_SECS
 
 -- 타이머 틱. idle 인자는 테스트 주입용 (생략 시 실제 유휴 시간)
 function M.tick(idle)
@@ -210,11 +235,12 @@ function M.tick(idle)
       M.present = false
       log.f("away (idle %ds)", idle)
     else
-      -- 자리에 있는 동안 사용 여부 기록 (관찰만, 블루투스 명령 없음)
+      -- 자리에 있는 동안 마지막 연결 상태 기록 (관찰만, 블루투스 명령 없음).
+      -- 자리에서 끊으면(충전, 다른 기기 사용 등) 기록도 꺼져서 복귀 시 재연결
+      -- 대상에서 빠지고, 착용한 채 나가 거리로 끊긴 경우만 대상으로 남습니다.
       for id, def in pairs(M.devices) do
-        if def.reconnectOnReturn and not M.state[id].inUse
-           and M.audioConnected(def.name) then
-          M.state[id].inUse = true
+        if def.reconnectOnReturn then
+          setInUse(id, M.audioConnected(def.name))
         end
       end
     end
@@ -223,7 +249,7 @@ function M.tick(idle)
     log.i("returned")
     for id, def in pairs(M.devices) do
       local wasInUse = M.state[id].inUse
-      M.state[id].inUse = false   -- 새 세션 시작 (연결이 살아 있으면 다시 기록됨)
+      setInUse(id, false)   -- 새 세션 시작 (연결이 살아 있으면 다시 기록됨)
       if def.reconnectOnReturn and wasInUse and not M.audioConnected(def.name) then
         log.f("reconnect %s", id)
         M.connect(id, { silentFail = true })
