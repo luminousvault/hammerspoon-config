@@ -12,7 +12,7 @@ macOS 자동화 도구 [Hammerspoon](https://www.hammerspoon.org/) 개인 설정
 
 | 모듈 | 설명 |
 |------|------|
-| [`modules/input_source.lua`](modules/input_source.lua) | **오른쪽 커맨드 키 단독 탭으로 한/영 전환.** 다른 키와 조합하면 일반 커맨드 키로 동작. 전환 시 포커스된 화면 하단에 `[한] 두벌식` / `[A] ABC` 알림 표시 (모드: all / manual / off) |
+| [`modules/input_source.lua`](modules/input_source.lua) | **오른쪽 커맨드 키 단독 탭으로 한/영 전환.** 다른 키와 조합하면 일반 커맨드 키로 동작. 커맨드를 떼기 전에 다음 글자를 눌러도(롤 입력) 단축키 오발동 없이 전환 후 그 글자가 새 입력 소스로 입력됨 (`,` 등 허용 키는 예외). 전환 시 포커스된 화면 하단에 `[한] 두벌식` / `[A] ABC` 알림 표시 (모드: all / manual / off) |
 | [`modules/audio_by_location.lua`](modules/audio_by_location.lua) | **Wi-Fi SSID 기준 오디오 자동 전환.** `local_config.lua` 에 장소를 자유롭게 정의하고 장소별 정책 지정: 고정값 또는 기억·복원(`remember`), 블루투스 이어폰 등 개인 기기를 건드리지 않는 스피커 한정 적용(`speakerOnly`), 절전 복귀 시 재적용(`enforceOnWake`), 등록되지 않은 SSID 대비 기본 장소(`fallback`) |
 | [`modules/caps_lock.lua`](modules/caps_lock.lua) | **CAPS LOCK 토글 알림.** 켜지면 `[⇪] ABC` (주황 배지, 2초), 꺼지면 `[⇪] abc` (회색, 0.6초). 영어 입력 소스일 때만 표시. 켜고 끄기는 input_source 의 알림 모드를 따름 (`off` 면 숨김) |
 | [`modules/alert.lua`](modules/alert.lua) | **공통 알림 UI.** `hs.alert` 대체. 위치(TOP/CENTER/BOTTOM)·시간(SHORT/NORMAL/LONG) 지정, 배지(글자 또는 아이콘) 지원 |
