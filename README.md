@@ -15,7 +15,7 @@ Personal configuration for [Hammerspoon](https://www.hammerspoon.org/), the macO
 | [`modules/input_source.lua`](modules/input_source.lua) | **Toggle Korean/English input with a solo tap of the right Command key.** Combined with other keys it still works as a normal Command key. Rolling into the next character before releasing Command no longer fires shortcuts — it switches first, then types the key in the new input source (allowlisted keys like `,` are exempt). Shows a `[한] 두벌식` / `[A] ABC` alert at the bottom of the focused screen on switch (modes: all / manual / off) |
 | [`modules/audio_by_location.lua`](modules/audio_by_location.lua) | **Auto-switch audio output state based on Wi-Fi SSID.** Define any number of places in `local_config.lua`, each with its own policy: fixed state or remember-and-restore (`remember`), speaker-only enforcement that leaves Bluetooth earbuds and other personal devices alone (`speakerOnly`), re-apply on wake (`enforceOnWake`), and a default place for unregistered SSIDs (`fallback`) |
 | [`modules/caps_lock.lua`](modules/caps_lock.lua) | **CAPS LOCK toggle alert.** `[⇪] ABC` with an orange badge for 2s when engaged, `[⇪] abc` in gray for 0.6s when released. Shown only while the English input source is active. Follows input_source's alert mode (hidden when `off`) |
-| [`modules/bluetooth_device.lua`](modules/bluetooth_device.lua) | **Bluetooth device hotkey toggle + auto-reconnect on return.** Define devices (MAC + hotkey) in `local_config.lua`. Detects away→return via input idle time (works whether or not the screen was locked), and if a device you were using before leaving is disconnected, tries to reconnect once — failures are silent, only success shows an alert. Requires `blueutil` (`brew install blueutil`) |
+| [`modules/bluetooth_device.lua`](modules/bluetooth_device.lua) | **Bluetooth device hotkey toggle.** Define devices (MAC + hotkey) in `local_config.lua`. Toggle connect/disconnect with a hotkey, with an alert shown when the audio device actually appears/disappears. Requires `blueutil` (`brew install blueutil`) |
 | [`modules/alert.lua`](modules/alert.lua) | **Shared alert UI** replacing `hs.alert`. Configurable position (TOP / CENTER / BOTTOM) and duration (SHORT / NORMAL / LONG), with optional badge (a character or an icon) |
 
 ## Installation
@@ -51,7 +51,7 @@ audioLoc.reapply()               -- re-apply the current place policy now
 audioLoc.pin()                   -- save the current state for this place (remembering places only)
 audioLoc.reset()                 -- clear remembered states
 
-btDevice.status()                -- show Bluetooth device connection / in-use state
+btDevice.status()                -- show Bluetooth device connection state
 btDevice.toggle("openfit")       -- toggle a device connection (same as the hotkey)
 
 customAlert.show("message")      -- call the shared alert directly
