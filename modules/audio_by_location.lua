@@ -232,12 +232,10 @@ M.sleep = hs.caffeinate.watcher.new(function(event)
 end):start()
 
 -- 출력 기기가 바뀌면(블루투스 이어폰 재연결, HDMI 재인식 등) 그 기기 기준으로 재적용
--- 주의: hs.audiodevice.watcher 콜백은 Hammerspoon 전체에 하나만 등록됩니다.
---       다른 모듈에서 setCallback 을 부르면 서로 덮어씁니다.
-hs.audiodevice.watcher.setCallback(function(event)
+-- hs.audiodevice.watcher 콜백은 전역 1개뿐이라 공용 멀티플렉서를 통해 구독
+require("modules.audio_events").subscribe(function(event)
   if event == "dOut" then schedule(true) end
 end)
-hs.audiodevice.watcher.start()
 
 --------------------------------------------------------------------------------
 -- 콘솔용 함수 (Hammerspoon 콘솔에서 audioLoc.xxx() 로 호출)

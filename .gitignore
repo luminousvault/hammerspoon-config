@@ -6,3 +6,6 @@ local_config.lua
 
 # Hammerspoon 이 관리하는 외부 패키지
 Spoons/
+
+# 빌드 산출물 (helpers/*.swift 에서 컴파일)
+helpers/ble-adv-watch

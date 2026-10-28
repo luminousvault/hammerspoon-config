@@ -15,7 +15,8 @@ macOS 자동화 도구 [Hammerspoon](https://www.hammerspoon.org/) 개인 설정
 | [`modules/input_source.lua`](modules/input_source.lua) | **오른쪽 커맨드 키 단독 탭으로 한/영 전환.** 다른 키와 조합하면 일반 커맨드 키로 동작. 커맨드를 떼기 전에 다음 글자를 눌러도(롤 입력) 단축키 오발동 없이 전환 후 그 글자가 새 입력 소스로 입력됨 (`,` 등 허용 키는 예외). 전환 시 포커스된 화면 하단에 `[한] 두벌식` / `[A] ABC` 알림 표시 (모드: all / manual / off) |
 | [`modules/audio_by_location.lua`](modules/audio_by_location.lua) | **Wi-Fi SSID 기준 오디오 자동 전환.** `local_config.lua` 에 장소를 자유롭게 정의하고 장소별 정책 지정: 고정값 또는 기억·복원(`remember`), 블루투스 이어폰 등 개인 기기를 건드리지 않는 스피커 한정 적용(`speakerOnly`), 절전 복귀 시 재적용(`enforceOnWake`), 등록되지 않은 SSID 대비 기본 장소(`fallback`) |
 | [`modules/caps_lock.lua`](modules/caps_lock.lua) | **CAPS LOCK 토글 알림.** 켜지면 `[⇪] ABC` (주황 배지, 2초), 꺼지면 `[⇪] abc` (회색, 0.6초). 영어 입력 소스일 때만 표시. 켜고 끄기는 input_source 의 알림 모드를 따름 (`off` 면 숨김) |
-| [`modules/bluetooth_device.lua`](modules/bluetooth_device.lua) | **블루투스 기기 단축키 연결 토글.** `local_config.lua` 에 기기(MAC·단축키)를 정의. 단축키로 연결/해제를 토글하고, 실제 오디오 장치 등장/소멸 시점에 알림 표시. `blueutil` 필요 (`brew install blueutil`) |
+| [`modules/bluetooth_device.lua`](modules/bluetooth_device.lua) | **블루투스 기기 단축키 연결 토글 + BLE 근접 자동 재연결.** `local_config.lua` 에 기기(MAC·단축키)를 정의. 단축키로 연결/해제를 토글하고, 실제 오디오 장치 등장/소멸 시점에 알림 표시. `autoReconnect` 기기는 착용한 채 자리를 비워 끊겼다 돌아오면 BLE 광고 재등장(제조사 데이터의 임베디드 MAC 매칭)을 감지해 자동 연결 — 단축키로 끊은 기기는 건드리지 않음. `blueutil` 필요, 자동 재연결은 `helpers/ble-adv-watch` 빌드 필요 |
+| [`modules/audio_events.lua`](modules/audio_events.lua) | **hs.audiodevice.watcher 멀티플렉서.** 전역 1개뿐인 오디오 장치 워처 콜백을 여러 모듈이 나눠 쓰도록 구독 방식으로 중계 |
 | [`modules/alert.lua`](modules/alert.lua) | **공통 알림 UI.** `hs.alert` 대체. 위치(TOP/CENTER/BOTTOM)·시간(SHORT/NORMAL/LONG) 지정, 배지(글자 또는 아이콘) 지원 |
 
 ## 설치
@@ -51,7 +52,7 @@ audioLoc.reapply()               -- 현재 장소 정책 즉시 재적용
 audioLoc.pin()                   -- 지금 상태를 현재 장소 값으로 저장 (기억 장소만)
 audioLoc.reset()                 -- 기억값 초기화
 
-btDevice.status()                -- 블루투스 기기 연결 상태 확인
+btDevice.status()                -- 블루투스 기기 연결·무장·감시 상태 확인
 btDevice.toggle("openfit")       -- 기기 연결/해제 토글 (단축키와 동일)
 
 customAlert.show("메시지")       -- 공통 알림 직접 호출
