@@ -9,6 +9,7 @@ Alert.show("🔨 Hammerspoon 설정 로드 완료")   -- 중앙, 2초 (기본값
 require("hs.ipc")  -- 터미널 hs CLI 연동
 
 require("modules.input_source")
+require("modules.app_input_source")
 require("modules.audio_by_location")
 require("modules.caps_lock")
 require("modules.bluetooth_device")
