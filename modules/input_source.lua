@@ -27,6 +27,19 @@
 --   2) 시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용 에서 Hammerspoon 허용
 --      (eventtap 은 손쉬운 사용 권한이 필요. 위치 서비스와는 무관)
 --
+-- 전환 방식 (Chrome 등에서 전환이 씹히는 문제)
+--   hs.keycodes.currentSourceID() 는 내부적으로 TISSelectInputSource 를 쓰는데,
+--   한글 같은 CJKV 입력기로 바꿀 때 메뉴 막대/현재 소스 값은 바뀌어도
+--   앞에 떠 있는 앱(특히 Chrome 등 Chromium 계열)의 입력 상태에는 반영되지
+--   않는 경우가 있습니다 (macOS 버전·기기에 따라 빈도가 다름).
+--   그래서 시스템 설정의 "이전 입력 소스 선택" 단축키가 켜져 있으면 그
+--   단축키를 합성 입력해서 macOS 가 직접 전환하게 합니다 (가장 확실).
+--   켜는 법: 시스템 설정 → 키보드 → 키보드 단축키 → 입력 소스 →
+--           "이전 입력 소스 선택" 체크 (조합은 아무거나. 기본 ctrl+space)
+--   단축키가 꺼져 있거나, 입력 소스가 2개가 아니거나, 단축키로 바뀌지 않으면
+--   기존 방식(TISSelectInputSource)으로 전환합니다.
+--   현재 방식 확인: 콘솔에서 inputSource.status()
+--
 -- 주의: hs.keycodes.inputSourceChanged 콜백은 Hammerspoon 전체에 하나만
 --       등록됩니다. 다른 모듈에서 같은 콜백을 등록하면 서로 덮어씁니다.
 --------------------------------------------------------------------------------
@@ -56,6 +69,15 @@ local SHORTCUT_KEYS = { "," }
 -- 입력 소스 전환이 앱에 반영될 틈을 줍니다. 새 소스가 아닌 이전 소스의
 -- 글자가 입력되는 일이 잦으면 이 값을 조금 올리세요.
 local RETYPE_DELAY = 0.06
+
+-- 시스템 단축키로 전환을 요청한 뒤 이 시간(초) 안에 바뀌지 않으면
+-- TISSelectInputSource 로 직접 전환합니다 (단축키 충돌 등 대비).
+local SHORTCUT_FALLBACK_DELAY = 0.3
+
+-- 시스템 단축키 설정 파일. "이전 입력 소스 선택" 은 AppleSymbolicHotKeys 의 60
+local SYMBOLIC_HOTKEYS_PLIST =
+  os.getenv("HOME") .. "/Library/Preferences/com.apple.symbolichotkeys.plist"
+local PREV_SOURCE_HOTKEY_ID = "60"
 
 -- 전환 알림 모드
 M.AlertMode = {
@@ -109,23 +131,98 @@ M.ENGLISH    = ENGLISH   -- 다른 모듈에서 "영어 모드인지" 판별용 
 -- 전환
 --------------------------------------------------------------------------------
 
-function M.toggle()
+-- plist 의 모디파이어 비트마스크 → hs.eventtap 모디파이어 이름
+local MOD_MASKS = {
+  { 0x20000,  "shift" },
+  { 0x40000,  "ctrl"  },
+  { 0x80000,  "alt"   },
+  { 0x100000, "cmd"   },
+  { 0x800000, "fn"    },   -- F 키 등은 fn 비트가 함께 기록됨
+}
+
+-- 시스템 설정의 "이전 입력 소스 선택" 단축키 { mods, keycode }. 꺼져 있으면 nil.
+-- 설정을 바꾸면 바로 반영되도록 호출할 때마다 읽습니다 (파일이 작아 부담 없음).
+function M.systemShortcut()
+  local ok, plist = pcall(hs.plist.read, SYMBOLIC_HOTKEYS_PLIST)
+  if not ok or type(plist) ~= "table" then return nil end
+  local hotkey = plist.AppleSymbolicHotKeys
+      and plist.AppleSymbolicHotKeys[PREV_SOURCE_HOTKEY_ID]
+  if not (hotkey and hotkey.enabled) then return nil end
+  local params = hotkey.value and hotkey.value.parameters
+  local keycode, mask = params and params[2], params and params[3]
+  if type(keycode) ~= "number" or keycode == 65535
+      or type(mask) ~= "number" then
+    return nil
+  end
+  local mods = {}
+  for _, m in ipairs(MOD_MASKS) do
+    if mask & m[1] ~= 0 then mods[#mods + 1] = m[2] end
+  end
+  return { mods = mods, keycode = keycode }
+end
+
+-- "이전 입력 소스" 는 두 소스 사이를 오갈 때만 원하는 대상과 일치
+local function enabledSourceCount()
+  local n = 0
+  for _ in pairs(hs.keycodes.layouts(true) or {}) do n = n + 1 end
+  for _ in pairs(hs.keycodes.methods(true) or {}) do n = n + 1 end
+  return n
+end
+
+-- 시스템 단축키 합성 입력. 테스트에서 교체할 수 있게 M 에 둡니다.
+-- SYNTH_TAG 를 달아서 롤 중에 쏴도 keyWatcher 가 삼키지 않게 합니다.
+local function postTagged(mods, keycode)
+  local down = hs.eventtap.event.newKeyEvent(mods, keycode, true)
+  local up   = hs.eventtap.event.newKeyEvent(mods, keycode, false)
+  down:setProperty(hs.eventtap.event.properties.eventSourceUserData, SYNTH_TAG)
+  up:setProperty(hs.eventtap.event.properties.eventSourceUserData, SYNTH_TAG)
+  down:post()
+  up:post()
+end
+
+function M._postShortcut(shortcut)
+  postTagged(shortcut.mods, shortcut.keycode)
+end
+
+local fallbackTimer = nil
+
+-- target 으로 전환. 가능하면 시스템 단축키, 아니면 TISSelectInputSource.
+local function switchTo(target)
   manualChangeAt = hs.timer.secondsSinceEpoch()
-  if hs.keycodes.currentSourceID() == ENGLISH then
-    hs.keycodes.currentSourceID(KOREAN)
+  if fallbackTimer then fallbackTimer:stop(); fallbackTimer = nil end
+
+  local current = hs.keycodes.currentSourceID()
+  if current == target then return end
+
+  local shortcut = M.systemShortcut()
+  if shortcut and enabledSourceCount() == 2 then
+    M._postShortcut(shortcut)
+    fallbackTimer = hs.timer.doAfter(SHORTCUT_FALLBACK_DELAY, function()
+      fallbackTimer = nil
+      if hs.keycodes.currentSourceID() == current then
+        manualChangeAt = hs.timer.secondsSinceEpoch()
+        hs.keycodes.currentSourceID(target)
+      end
+    end)
   else
-    hs.keycodes.currentSourceID(ENGLISH)
+    hs.keycodes.currentSourceID(target)
+  end
+end
+
+function M.toggle()
+  if hs.keycodes.currentSourceID() == ENGLISH then
+    switchTo(KOREAN)
+  else
+    switchTo(ENGLISH)
   end
 end
 
 function M.toEnglish()
-  manualChangeAt = hs.timer.secondsSinceEpoch()
-  hs.keycodes.currentSourceID(ENGLISH)
+  switchTo(ENGLISH)
 end
 
 function M.toKorean()
-  manualChangeAt = hs.timer.secondsSinceEpoch()
-  hs.keycodes.currentSourceID(KOREAN)
+  switchTo(KOREAN)
 end
 
 --------------------------------------------------------------------------------
@@ -180,12 +277,7 @@ end)
 
 -- 롤로 삼킨 키를 cmd 없이 다시 입력. 테스트에서 교체할 수 있게 M 에 둡니다.
 function M._postKey(mods, keycode)
-  local down = hs.eventtap.event.newKeyEvent(mods, keycode, true)
-  local up   = hs.eventtap.event.newKeyEvent(mods, keycode, false)
-  down:setProperty(hs.eventtap.event.properties.eventSourceUserData, SYNTH_TAG)
-  up:setProperty(hs.eventtap.event.properties.eventSourceUserData, SYNTH_TAG)
-  down:post()
-  up:post()
+  postTagged(mods, keycode)
 end
 
 -- 입력 소스 전환이 반영된 뒤 키를 다시 입력하도록 예약
@@ -297,12 +389,23 @@ end
 
 -- 동작이 멈춘 것 같을 때 확인
 function M.status()
+  local shortcut = M.systemShortcut()
+  local method
+  if not shortcut then
+    method = "TIS (system shortcut disabled)"
+  elseif enabledSourceCount() ~= 2 then
+    method = "TIS (needs exactly 2 input sources)"
+  else
+    method = string.format("system shortcut (mods=%s keycode=%d)",
+      table.concat(shortcut.mods, "+"), shortcut.keycode)
+  end
   print(string.format(
-    "flagsWatcher=%s keyWatcher=%s alertMode=%s current=%s",
+    "flagsWatcher=%s keyWatcher=%s alertMode=%s current=%s switch=%s",
     tostring(M.flagsWatcher and M.flagsWatcher:isEnabled()),
     tostring(M.keyWatcher and M.keyWatcher:isEnabled()),
     tostring(M.alertMode),
-    tostring(hs.keycodes.currentSourceID())
+    tostring(hs.keycodes.currentSourceID()),
+    method
   ))
 end
 

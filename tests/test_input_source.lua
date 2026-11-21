@@ -138,4 +138,36 @@ return {
       t.sleep(1)   -- 알림 소멸 대기
     end,
   },
+  {
+    name = "시스템 단축키 경유: 단축키를 쏘고, 안 바뀌면 TIS 로 폴백",
+    fn = function(t)
+      local original = hs.keycodes.currentSourceID()
+      local shots = {}
+      local savedShortcut, savedPost = IS.systemShortcut, IS._postShortcut
+      IS.systemShortcut = function() return { mods = { "ctrl" }, keycode = 49 } end
+      IS._postShortcut  = function(sc) shots[#shots + 1] = sc end   -- 실제 전환 안 함
+
+      IS.toggle()
+      t.eq(#shots, 1, "shortcut posted once")
+      t.eq(shots[1] and shots[1].keycode, 49, "shortcut keycode")
+      t.waitUntil(function() return hs.keycodes.currentSourceID() ~= original end,
+        3, "fallback switched via TIS")
+
+      IS.systemShortcut, IS._postShortcut = savedShortcut, savedPost
+      hs.keycodes.currentSourceID(original)
+      t.sleep(1)   -- 알림 소멸 대기
+    end,
+  },
+  {
+    name = "systemShortcut: 설정 파일 파싱 결과가 올바른 형태",
+    fn = function(t)
+      local sc = IS.systemShortcut()   -- 꺼져 있으면 nil 이 정상
+      if sc then
+        t.truthy(type(sc.keycode) == "number", "keycode is number")
+        t.truthy(type(sc.mods) == "table", "mods is table")
+      else
+        t.eq(sc, nil, "disabled → nil")
+      end
+    end,
+  },
 }
